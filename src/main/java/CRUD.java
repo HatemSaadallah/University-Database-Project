@@ -52,8 +52,8 @@ public class CRUD extends JFrame {
         });
     }
 
-    public static void main(String[] args) {
-        new CRUD();
-    }
+//    public static void main(String[] args) {
+//        new CRUD();
+//    }
 
 }

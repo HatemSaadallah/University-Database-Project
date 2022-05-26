@@ -1,6 +1,10 @@
 import java.sql.*;
 import java.util.ArrayList;
 
+import oracle.jdbc.OracleTypes;
+import oracle.jdbc.driver.OracleDriver;
+import oracle.sql.DATE;
+
 class UserData {
     private String username;
     private String password;
@@ -31,9 +35,17 @@ public class Main {
 
     public void addNewUser(String username, String password) {
         try {
-            Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/university_project", "root", "");
+//            Connect to sql plus
+            Connection connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "dream", "dream");
             Statement statement = connection.createStatement();
-            statement.executeUpdate("INSERT INTO university_project.users (username, password, created_at) VALUES ('" + username + "', '" + password + "', '" + new Timestamp(System.currentTimeMillis()) + "')");
+            System.out.println("Connected to database");
+//            Call procedure insertuser
+            CallableStatement callableStatement = connection.prepareCall("{call insert_user(?, ?)}");
+            callableStatement.setString(1, username);
+            callableStatement.setString(2, password);
+
+            callableStatement.execute();
+            System.out.println("User added");
             statement.close();
             connection.close();
         } catch (SQLException e) {
@@ -44,45 +56,58 @@ public class Main {
     public ArrayList<UserData> getUsers() {
         ArrayList<UserData> users = new ArrayList<>();
         try {
-            Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/university_project", "root", "");
+            Connection connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "dream", "dream");
             Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM university_project.users");
+//            Call procedure get_all_users
+            CallableStatement callableStatement = connection.prepareCall("{call get_all_users(?)}");
+            callableStatement.registerOutParameter(1, OracleTypes.CURSOR);
+            callableStatement.execute();
+
+            ResultSet resultSet = (ResultSet) callableStatement.getObject(1);
+
             while (resultSet.next()) {
-                users.add(new UserData(resultSet.getInt("id"), resultSet.getString("username"), resultSet.getString("password"), resultSet.getTimestamp("created_at")));
+                int id = resultSet.getInt("id");
+                String username = resultSet.getString("username");
+                String password = resultSet.getString("password");
+                Timestamp createdAt = resultSet.getTimestamp("created_at");
+                users.add(new UserData(id, username, password, createdAt));
             }
-            statement.close();
-            connection.close();
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return users;
     }
 
-    public boolean checkUserExists(int id) {
-        try {
-            Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/university_project", "root", "");
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM university_project.users WHERE id = " + id);
-            if (resultSet.next()) {
-                statement.close();
-                connection.close();
-                return true;
-            }
-            statement.close();
-            connection.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
+//    public boolean checkUserExists(int id) {
+//        try {
+//            Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/university_project", "dream", "dream");
+//            Statement statement = connection.createStatement();
+//            ResultSet resultSet = statement.executeQuery("SELECT * FROM users WHERE id = " + id);
+//            if (resultSet.next()) {
+//                statement.close();
+//                connection.close();
+//                return true;
+//            }
+//            statement.close();
+//            connection.close();
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//        }
+//        return false;
+//    }
     public boolean deleteUserById(int id) {
-        if(!checkUserExists(id)) {
-            return false;
-        }
+//        if(!checkUserExists(id)) {
+//            return false;
+//        }
         try {
-            Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/university_project", "root", "");
+            Connection connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "dream", "dream");
             Statement statement = connection.createStatement();
-            statement.executeUpdate("DELETE FROM university_project.users WHERE id = " + id);
+//            Call Procedure delete_user_by_id
+            CallableStatement callableStatement = connection.prepareCall("{call delete_user_by_id(?)}");
+            callableStatement.setInt(1, id);
+            callableStatement.execute();
+
             statement.close();
             connection.close();
             return true;
@@ -92,23 +117,81 @@ public class Main {
         }
     }
 
-    public boolean updateUserById(int id, String username, String password) {
-        if(!checkUserExists(id)) {
-            return false;
-        }
+    public static void getUserById(int id) {
         try {
-            Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/university_project", "root", "");
+            Connection connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "dream", "dream");
             Statement statement = connection.createStatement();
-            statement.executeUpdate("UPDATE university_project.users SET username = '" + username + "', password = '" + password + "' WHERE id = " + id);
+            CallableStatement callableStatement = connection.prepareCall("{call get_user_by_id(?, ?)}");
+            callableStatement.setInt(1, id);
+
+//            Get second parameter from procedure of type SYS_REFCURSOR
+            callableStatement.registerOutParameter(2, OracleTypes.CURSOR);
+            callableStatement.execute();
+
+            ResultSet resultSet = (ResultSet) callableStatement.getObject(2);
+            assert !callableStatement.wasNull();
+
+            if (resultSet.next()) {
+                System.out.println("Username: " + resultSet.getString("username"));
+                System.out.println("Password: " + resultSet.getString("password"));
+                System.out.println("Created at: " + resultSet.getTimestamp("created_at"));
+            }
+
+
+            statement.close();
+            connection.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public boolean updateUserById(int id, String username, String password) {
+//        if(!checkUserExists(id)) {
+//            return false;
+//        }
+        try {
+            Connection connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "dream", "dream");
+            Statement statement = connection.createStatement();
+
+            CallableStatement callableStatement = connection.prepareCall("{call update_user_by_id(?, ?, ?)}");
+            callableStatement.setInt(1, id);
+            callableStatement.setString(2, username);
+            callableStatement.setString(3, password);
+            callableStatement.executeUpdate();
+
+            System.out.println("User updated");
+
             statement.close();
             connection.close();
             return true;
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;
         }
+        return false;
     }
-    public static void main(String[] args) {
+
+//    void getAllUsers() {
+//        try {
+//            Connection connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "dream", "dream");
+//            Statement statement = connection.createStatement();
+////            Call procedure get_all_users
+//            CallableStatement callableStatement = connection.prepareCall("{call get_all_users(?)}");
+//            callableStatement.registerOutParameter(1, OracleTypes.CURSOR);
+//            callableStatement.execute();
+//
+//            ResultSet resultSet = (ResultSet) callableStatement.getObject(1);
+//
+//            while (resultSet.next()) {
+//                System.out.println("Username: " + resultSet.getString("username"));
+//                System.out.println("Password: " + resultSet.getString("password"));
+//                System.out.println("Created at: " + resultSet.getTimestamp("created_at"));
+//            }
+//
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//        }
+//    }
+        public static void main(String[] args) {
         new CRUD();
     }
 }

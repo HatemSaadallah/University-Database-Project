@@ -16,18 +16,15 @@ public class AddUser extends Container {
 
     public AddUser() {
 
-        addUserButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String username = textField1.getText();
-                String password = passwordField1.getText();
-                if (username.equals("") || password.equals("")) {
-                    JOptionPane.showMessageDialog(null, "Please fill all fields");
-                } else {
-                    new Main().addNewUser(username, password);
-                    JOptionPane.showMessageDialog(null, "User added successfully");
-                    close();
-                }
+        addUserButton.addActionListener(e -> {
+            String username = textField1.getText();
+            String password = passwordField1.getText();
+            if (username.equals("") || password.equals("")) {
+                JOptionPane.showMessageDialog(null, "Please fill all fields");
+            } else {
+                new Main().addNewUser(username, password);
+                JOptionPane.showMessageDialog(null, "User added successfully");
+                close();
             }
         });
     }
